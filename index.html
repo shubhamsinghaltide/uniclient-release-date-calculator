@@ -12,10 +12,13 @@
     h1{margin:0 0 8px;font-size:20px}
     p.lead{margin:0 0 18px;color:var(--muted)}
     .controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-    input[type=date]{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:10px 12px;border-radius:8px;color:inherit}
+    select{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:10px 12px;border-radius:8px;color:inherit;min-width:280px;cursor:pointer}
     button{background:var(--accent);border:none;color:white;padding:10px 14px;border-radius:8px;cursor:pointer}
     .result{background:rgba(255,255,255,0.02);padding:16px;border-radius:8px;border:1px solid rgba(255,255,255,0.02)}
-    .row{display:flex;gap:12px;align-items:center}
+    .row{display:flex;gap:12px;align-items:center;padding:8px;border-radius:6px;margin:4px 0}
+    .row.highlight{background:linear-gradient(90deg,rgba(124,58,237,0.15),rgba(124,58,237,0.05));border:1px solid rgba(124,58,237,0.3);padding:12px}
+    .row.highlight .label{color:#e6eef8;font-weight:600}
+    .row.highlight .date-pill{font-size:1.1em;color:#c4b5fd}
     .label{color:var(--muted);width:220px}
     .date-pill{font-weight:600}
     footer{margin-top:14px;color:var(--muted);font-size:13px}
@@ -29,21 +32,19 @@
     <p class="lead">Enter your release cut date and see when the app should be available to 100% of users, plus intermediate milestones.</p>
 
     <div class="controls">
-      <input id="cutDate" type="date" />
+      <select id="cutDate">
+        <option value="">Select a Tuesday...</option>
+      </select>
       <button id="calc">Calculate</button>
-      <button id="today">Use today</button>
-      <div class="actions">
-        <button id="copy">Copy result</button>
-        <button id="download">Download HTML</button>
-      </div>
+      <button id="copy">Copy result</button>
     </div>
 
     <div id="out" class="result" aria-live="polite">
-      <div class="row"><div class="label">Version:</div><div id="version" class="date-pill">—</div></div>
+      <div class="row highlight"><div class="label">Version:</div><div id="version" class="date-pill">—</div></div>
       <div class="row"><div class="label">Release cut::</div><div id="cut" class="date-pill">—</div></div>
       <div class="row"><div class="label">Production builds submitted:</div><div id="submit" class="date-pill">—</div></div>
       <div class="row"><div class="label">Staged rollout starts:</div><div id="staged" class="date-pill">—</div></div>
-      <div class="row"><div class="label">Reaches 100% (full rollout):</div><div id="full" class="date-pill">—</div></div>
+      <div class="row highlight"><div class="label">Reaches 100% (full rollout):</div><div id="full" class="date-pill">—</div></div>
       <footer>Rules used: submit = cut + 6 days; staged start = submit + 1 day; full rollout = staged start + 3 days (so full = cut + 10 days). You can edit the page if you want different durations.</footer>
     </div>
   </div>
@@ -63,12 +64,50 @@
 
     const cutEl = document.getElementById('cutDate');
     const calcBtn = document.getElementById('calc');
-    const todayBtn = document.getElementById('today');
     const copyBtn = document.getElementById('copy');
-    const downloadBtn = document.getElementById('download');
+
+    // Populate dropdown with Tuesdays (past, current, and future)
+    function populateTuesdays() {
+      const today = new Date();
+      const tuesdays = [];
+      
+      // Find the most recent Tuesday (or today if it's Tuesday)
+      let current = new Date(today);
+      while (current.getDay() !== 2) { // 2 = Tuesday
+        current.setDate(current.getDate() - 1);
+      }
+      
+      // Go back 12 weeks from the most recent Tuesday
+      const startDate = new Date(current);
+      startDate.setDate(startDate.getDate() - (12 * 7));
+      
+      // Generate 26 weeks of Tuesdays (12 past + current + 13 future)
+      for (let i = 0; i < 26; i++) {
+        const tuesday = new Date(startDate);
+        tuesday.setDate(tuesday.getDate() + (i * 7));
+        tuesdays.push(tuesday);
+      }
+      
+      // Populate the dropdown
+      tuesdays.forEach(date => {
+        const option = document.createElement('option');
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth()+1).padStart(2,'0');
+        const dd = String(date.getDate()).padStart(2,'0');
+        option.value = `${yyyy}-${mm}-${dd}`;
+        option.textContent = fmt(date);
+        
+        // Mark current week's Tuesday as selected
+        if (date.getTime() === current.getTime()) {
+          option.selected = true;
+        }
+        
+        cutEl.appendChild(option);
+      });
+    }
 
     function calculateFromInput() {
-      if (!cutEl.value) return alert('Please pick a release cut date');
+      if (!cutEl.value) return alert('Please select a release cut date (Tuesday)');
       const parts = cutEl.value.split('-').map(Number); // yyyy-mm-dd
       const cut = new Date(parts[0], parts[1]-1, parts[2]);
 
@@ -84,40 +123,79 @@
     }
 
     calcBtn.addEventListener('click', calculateFromInput);
-    cutEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') calculateFromInput(); });
+    
+    // Auto-calculate when dropdown changes
+    cutEl.addEventListener('change', calculateFromInput);
 
-    todayBtn.addEventListener('click', ()=>{
-      const t = new Date();
-      const yyyy = t.getFullYear();
-      const mm = String(t.getMonth()+1).padStart(2,'0');
-      const dd = String(t.getDate()).padStart(2,'0');
-      cutEl.value = `${yyyy}-${mm}-${dd}`;
-      calculateFromInput();
-    });
+    // Initialize dropdown and auto-calculate
+    populateTuesdays();
+    calculateFromInput();
+
+    // Format date for message (e.g., "11 November (Tuesday)")
+    function fmtMessage(date) {
+      if (!date) return '—';
+      const day = date.getDate();
+      const month = date.toLocaleDateString(undefined, {month:'long'});
+      const weekday = date.toLocaleDateString(undefined, {weekday:'long'});
+      return `${day} ${month} (${weekday})`;
+    }
+
+    // Format date for detail (e.g., "Tue 18 November 2025")
+    function fmtDetail(date) {
+      if (!date) return '—';
+      const weekday = date.toLocaleDateString(undefined, {weekday:'short'});
+      const day = date.getDate();
+      const month = date.toLocaleDateString(undefined, {month:'long'});
+      const year = date.getFullYear();
+      return `${weekday} ${day} ${month} ${year}`;
+    }
 
     copyBtn.addEventListener('click', async ()=>{
-      const cut = document.getElementById('cut').textContent;
-      const full = document.getElementById('full').textContent;
-      if (cut==='—' || full==='—') { alert('Nothing to copy yet'); return; }
-      const text = `Release cut: ${cut}\nFull rollout (100%): ${full}`;
-      try { await navigator.clipboard.writeText(text); alert('Copied to clipboard'); } catch(e){ prompt('Copy this text:', text); }
+      const version = document.getElementById('version').textContent;
+      const cutText = document.getElementById('cut').textContent;
+      const submitText = document.getElementById('submit').textContent;
+      const stagedText = document.getElementById('staged').textContent;
+      const fullText = document.getElementById('full').textContent;
+      
+      if (cutText==='—' || fullText==='—') { alert('Nothing to copy yet'); return; }
+      
+      // Get the actual date objects
+      const parts = cutEl.value.split('-').map(Number);
+      const cut = new Date(parts[0], parts[1]-1, parts[2]);
+      const submit = addDays(cut, 6);
+      const staged = addDays(submit, 1);
+      const full = addDays(staged, 3);
+      
+      // Build the message
+      const message = `Version ${version} will be available to all users by ${fmtMessage(full)}.`;
+      
+      // Build the detail
+      const detail = `Version: ${version}\nRelease cut: ${fmtDetail(cut)}\nProduction builds submitted: ${fmtDetail(submit)}\nStaged rollout starts: ${fmtDetail(staged)}\nFull rollout (100%): ${fmtDetail(full)}`;
+      
+      // Combine message and detail
+      const text = `Message:\n\n${message}\n\n\nDetail:\n\n${detail}`;
+      
+      try { 
+        await navigator.clipboard.writeText(text); 
+        alert('Copied to clipboard'); 
+      } catch(e){ 
+        prompt('Copy this text:', text); 
+      }
     });
 
-    downloadBtn.addEventListener('click', ()=>{
-      const html = document.documentElement.outerHTML;
-      const blob = new Blob([html], {type:'text/html'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'uniclient-release-calculator.html';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
-
-    // Autofill example from conversation: set a sample date (optional)
-    // cutEl.value = '2025-11-11';
+    // Version calculation logic
+    // Base reference: version 3.146.0 had release cut on November 11, 2025 (Tuesday)
+    function computeVersion(cutDate) {
+      const referenceDate = new Date(2025, 10, 11); // November 11, 2025 (month is 0-indexed)
+      const referenceVersion = 146;
+      
+      // Calculate weeks difference (each release is typically weekly)
+      const diffTime = cutDate - referenceDate;
+      const diffWeeks = Math.round(diffTime / (7 * 24 * 60 * 60 * 1000));
+      
+      const versionNumber = referenceVersion + diffWeeks;
+      return `3.${versionNumber}.0`;
+    }
   </script>
 </body>
 </html>
