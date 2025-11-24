@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Uniclient Release Calculator</title>
+  <style>
+    :root{--bg:#0f172a;--card:#0b1220;--accent:#7c3aed;--muted:#94a3b8;--glass:rgba(255,255,255,0.03)}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(180deg,#071029 0%,#071222 100%);color:#e6eef8}
+    .card{width:100%;max-width:820px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:12px;padding:28px;box-shadow:0 6px 30px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+    h1{margin:0 0 8px;font-size:20px}
+    p.lead{margin:0 0 18px;color:var(--muted)}
+    .controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+    input[type=date]{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:10px 12px;border-radius:8px;color:inherit}
+    button{background:var(--accent);border:none;color:white;padding:10px 14px;border-radius:8px;cursor:pointer}
+    .result{background:rgba(255,255,255,0.02);padding:16px;border-radius:8px;border:1px solid rgba(255,255,255,0.02)}
+    .row{display:flex;gap:12px;align-items:center}
+    .label{color:var(--muted);width:220px}
+    .date-pill{font-weight:600}
+    footer{margin-top:14px;color:var(--muted);font-size:13px}
+    .actions{margin-left:auto;display:flex;gap:8px}
+    @media (max-width:600px){.label{width:140px}}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Uniclient release date calculator</h1>
+    <p class="lead">Enter your release cut date and see when the app should be available to 100% of users, plus intermediate milestones.</p>
+
+    <div class="controls">
+      <input id="cutDate" type="date" />
+      <button id="calc">Calculate</button>
+      <button id="today">Use today</button>
+      <div class="actions">
+        <button id="copy">Copy result</button>
+        <button id="download">Download HTML</button>
+      </div>
+    </div>
+
+    <div id="out" class="result" aria-live="polite">
+      <div class="row"><div class="label">Version:</div><div id="version" class="date-pill">—</div></div>
+      <div class="row"><div class="label">Release cut::</div><div id="cut" class="date-pill">—</div></div>
+      <div class="row"><div class="label">Production builds submitted:</div><div id="submit" class="date-pill">—</div></div>
+      <div class="row"><div class="label">Staged rollout starts:</div><div id="staged" class="date-pill">—</div></div>
+      <div class="row"><div class="label">Reaches 100% (full rollout):</div><div id="full" class="date-pill">—</div></div>
+      <footer>Rules used: submit = cut + 6 days; staged start = submit + 1 day; full rollout = staged start + 3 days (so full = cut + 10 days). You can edit the page if you want different durations.</footer>
+    </div>
+  </div>
+
+  <script>
+    // Utility: add days while preserving timezone-local date semantics
+    function addDays(date, days) {
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    function fmt(date) {
+      if (!date) return '—';
+      return date.toLocaleDateString(undefined, {weekday:'short',year:'numeric',month:'long',day:'numeric'});
+    }
+
+    const cutEl = document.getElementById('cutDate');
+    const calcBtn = document.getElementById('calc');
+    const todayBtn = document.getElementById('today');
+    const copyBtn = document.getElementById('copy');
+    const downloadBtn = document.getElementById('download');
+
+    function calculateFromInput() {
+      if (!cutEl.value) return alert('Please pick a release cut date');
+      const parts = cutEl.value.split('-').map(Number); // yyyy-mm-dd
+      const cut = new Date(parts[0], parts[1]-1, parts[2]);
+
+      const submit = addDays(cut, 6);
+      const staged = addDays(submit, 1);
+      const full = addDays(staged, 3);
+
+      document.getElementById('version').textContent = computeVersion(cut);
+      document.getElementById('cut').textContent = fmt(cut);
+      document.getElementById('submit').textContent = fmt(submit);
+      document.getElementById('staged').textContent = fmt(staged);
+      document.getElementById('full').textContent = fmt(full);
+    }
+
+    calcBtn.addEventListener('click', calculateFromInput);
+    cutEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') calculateFromInput(); });
+
+    todayBtn.addEventListener('click', ()=>{
+      const t = new Date();
+      const yyyy = t.getFullYear();
+      const mm = String(t.getMonth()+1).padStart(2,'0');
+      const dd = String(t.getDate()).padStart(2,'0');
+      cutEl.value = `${yyyy}-${mm}-${dd}`;
+      calculateFromInput();
+    });
+
+    copyBtn.addEventListener('click', async ()=>{
+      const cut = document.getElementById('cut').textContent;
+      const full = document.getElementById('full').textContent;
+      if (cut==='—' || full==='—') { alert('Nothing to copy yet'); return; }
+      const text = `Release cut: ${cut}\nFull rollout (100%): ${full}`;
+      try { await navigator.clipboard.writeText(text); alert('Copied to clipboard'); } catch(e){ prompt('Copy this text:', text); }
+    });
+
+    downloadBtn.addEventListener('click', ()=>{
+      const html = document.documentElement.outerHTML;
+      const blob = new Blob([html], {type:'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'uniclient-release-calculator.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // Autofill example from conversation: set a sample date (optional)
+    // cutEl.value = '2025-11-11';
+  </script>
+</body>
+</html>
