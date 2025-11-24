@@ -66,6 +66,20 @@
     const calcBtn = document.getElementById('calc');
     const copyBtn = document.getElementById('copy');
 
+    // Version calculation logic
+    // Base reference: version 3.146.0 had release cut on November 11, 2025 (Tuesday)
+    function computeVersion(cutDate) {
+      const referenceDate = new Date(2025, 10, 11); // November 11, 2025 (month is 0-indexed)
+      const referenceVersion = 146;
+      
+      // Calculate weeks difference (each release is typically weekly)
+      const diffTime = cutDate - referenceDate;
+      const diffWeeks = Math.round(diffTime / (7 * 24 * 60 * 60 * 1000));
+      
+      const versionNumber = referenceVersion + diffWeeks;
+      return `3.${versionNumber}.0`;
+    }
+
     // Populate dropdown with Tuesdays (past, current, and future)
     function populateTuesdays() {
       const today = new Date();
@@ -104,7 +118,10 @@
         const mm = String(date.getMonth()+1).padStart(2,'0');
         const dd = String(date.getDate()).padStart(2,'0');
         option.value = `${yyyy}-${mm}-${dd}`;
-        option.textContent = fmt(date);
+        
+        // Add version number to dropdown text
+        const version = computeVersion(date);
+        option.textContent = `${fmt(date)} (${version})`;
         
         // Mark upcoming Tuesday as selected
         if (date.getTime() === upcomingTuesday.getTime()) {
@@ -191,20 +208,6 @@
         prompt('Copy this text:', text); 
       }
     });
-
-    // Version calculation logic
-    // Base reference: version 3.146.0 had release cut on November 11, 2025 (Tuesday)
-    function computeVersion(cutDate) {
-      const referenceDate = new Date(2025, 10, 11); // November 11, 2025 (month is 0-indexed)
-      const referenceVersion = 146;
-      
-      // Calculate weeks difference (each release is typically weekly)
-      const diffTime = cutDate - referenceDate;
-      const diffWeeks = Math.round(diffTime / (7 * 24 * 60 * 60 * 1000));
-      
-      const versionNumber = referenceVersion + diffWeeks;
-      return `3.${versionNumber}.0`;
-    }
   </script>
 </body>
 </html>
