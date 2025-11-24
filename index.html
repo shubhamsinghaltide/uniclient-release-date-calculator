@@ -71,14 +71,23 @@
       const today = new Date();
       const tuesdays = [];
       
-      // Find the most recent Tuesday (or today if it's Tuesday)
-      let current = new Date(today);
-      while (current.getDay() !== 2) { // 2 = Tuesday
-        current.setDate(current.getDate() - 1);
+      // Find the upcoming Tuesday (or today if it's Tuesday)
+      let upcomingTuesday = new Date(today);
+      const todayDay = upcomingTuesday.getDay();
+      
+      if (todayDay === 2) {
+        // If today is Tuesday, select today
+        // Do nothing, upcomingTuesday is already set to today
+      } else if (todayDay < 2) {
+        // If today is Sunday (0) or Monday (1), go forward to Tuesday
+        upcomingTuesday.setDate(upcomingTuesday.getDate() + (2 - todayDay));
+      } else {
+        // If today is Wednesday-Saturday (3-6), go to next Tuesday
+        upcomingTuesday.setDate(upcomingTuesday.getDate() + (7 - todayDay + 2));
       }
       
-      // Go back 12 weeks from the most recent Tuesday
-      const startDate = new Date(current);
+      // Go back 12 weeks from the upcoming Tuesday for the start
+      const startDate = new Date(upcomingTuesday);
       startDate.setDate(startDate.getDate() - (12 * 7));
       
       // Generate 26 weeks of Tuesdays (12 past + current + 13 future)
@@ -97,8 +106,8 @@
         option.value = `${yyyy}-${mm}-${dd}`;
         option.textContent = fmt(date);
         
-        // Mark current week's Tuesday as selected
-        if (date.getTime() === current.getTime()) {
+        // Mark upcoming Tuesday as selected
+        if (date.getTime() === upcomingTuesday.getTime()) {
           option.selected = true;
         }
         
