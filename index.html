@@ -68,15 +68,23 @@
 
     // Version calculation logic
     // Base reference: version 3.146.0 had release cut on November 11, 2025 (Tuesday)
+    // Note: December 30, 2025 release is skipped
     function computeVersion(cutDate) {
       const referenceDate = new Date(2025, 10, 11); // November 11, 2025 (month is 0-indexed)
       const referenceVersion = 146;
+      const skippedDate = new Date(2025, 11, 30); // December 30, 2025 (month is 0-indexed)
       
       // Calculate weeks difference (each release is typically weekly)
       const diffTime = cutDate - referenceDate;
       const diffWeeks = Math.round(diffTime / (7 * 24 * 60 * 60 * 1000));
       
-      const versionNumber = referenceVersion + diffWeeks;
+      let versionNumber = referenceVersion + diffWeeks;
+      
+      // Adjust for skipped release: if cutDate is after the skipped date, subtract 1
+      if (cutDate > skippedDate) {
+        versionNumber--;
+      }
+      
       return `3.${versionNumber}.0`;
     }
 
@@ -84,6 +92,7 @@
     function populateTuesdays() {
       const today = new Date();
       const tuesdays = [];
+      const skippedDate = new Date(2025, 11, 30); // December 30, 2025 (month is 0-indexed)
       
       // Find the upcoming Tuesday (or today if it's Tuesday)
       let upcomingTuesday = new Date(today);
@@ -108,6 +117,12 @@
       for (let i = 0; i < 26; i++) {
         const tuesday = new Date(startDate);
         tuesday.setDate(tuesday.getDate() + (i * 7));
+        
+        // Skip December 30, 2025
+        if (tuesday.getTime() === skippedDate.getTime()) {
+          continue;
+        }
+        
         tuesdays.push(tuesday);
       }
       
