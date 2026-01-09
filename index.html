@@ -68,11 +68,13 @@
 
     // Version calculation logic
     // Base reference: version 3.146.0 had release cut on November 11, 2025 (Tuesday)
-    // Note: December 30, 2025 release is skipped
+    // Note: December 30, 2025 release date is skipped
+    // Note: On January 6, 2026, version 3.153.0 was skipped, went directly to 3.154.0
     function computeVersion(cutDate) {
       const referenceDate = new Date(2025, 10, 11); // November 11, 2025 (month is 0-indexed)
       const referenceVersion = 146;
-      const skippedDate = new Date(2025, 11, 30); // December 30, 2025 (month is 0-indexed)
+      const skippedReleaseDate = new Date(2025, 11, 30); // December 30, 2025 (month is 0-indexed)
+      const jan6Date = new Date(2026, 0, 6); // January 6, 2026 (month is 0-indexed)
       
       // Calculate weeks difference (each release is typically weekly)
       const diffTime = cutDate - referenceDate;
@@ -80,9 +82,14 @@
       
       let versionNumber = referenceVersion + diffWeeks;
       
-      // Adjust for skipped release: if cutDate is after the skipped date, subtract 1
-      if (cutDate > skippedDate) {
+      // Adjust for skipped release date (Dec 30, 2025): if cutDate is after the skipped date, subtract 1
+      if (cutDate > skippedReleaseDate) {
         versionNumber--;
+      }
+      
+      // Adjust for skipped version number (3.153.0 on Jan 6, 2026): if cutDate is on or after Jan 6, add 1
+      if (cutDate >= jan6Date) {
+        versionNumber++;
       }
       
       return `3.${versionNumber}.0`;
